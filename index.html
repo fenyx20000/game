@@ -1,0 +1,2120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Supermercado Side Scroller (Android)</title>
+    <style>
+        @font-face {
+            font-family: 'Komikax';
+            src: url('./komikax_.ttf') format('truetype'),
+                 url('./komikax.ttf') format('truetype'),
+                 url('./komikax.otf') format('opentype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #333;
+            color: white;
+            font-family: Arial, sans-serif;
+            touch-action: manipulation;
+        }
+
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #background {
+            background-size: auto 100%;
+            background-repeat: no-repeat;
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        #barricade {
+            position: absolute;
+            bottom: 8.3vh;
+            z-index: 5;
+            display: none;
+            transform: translate(20%, 30%);
+        }
+
+        #barricade img {
+            height: 40vh;
+            width: auto;
+        }
+
+        #foreground {
+            background-size: auto 100%;
+            background-repeat: no-repeat;
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            z-index: 10;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        #player {
+            position: absolute;
+            bottom: 8.3vh;
+            left: 100px;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            transition: opacity 0.1s ease;
+        }
+
+        .blink-effect {
+            animation: player-blink 0.2s infinite alternate;
+        }
+
+        @keyframes player-blink {
+            0% { opacity: 0.2; }
+            100% { opacity: 1; }
+        }
+
+        #player-shadow {
+            position: absolute;
+            bottom: -1.5vh;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 18vh;
+            height: auto;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.8;
+            transition: opacity 0.1s, transform 0.1s;
+        }
+
+        #player img#player-img {
+            height: 40vh;
+            width: auto;
+            display: block;
+            position: relative;
+            z-index: 2;
+            filter: drop-shadow(0px 8px 6px rgba(0,0,0,0.4));
+            transition: transform 0.1s ease;
+        }
+
+        #player.facing-left img#player-img { transform: scaleX(-1); }
+        #player.facing-right img#player-img { transform: scaleX(1); }
+
+        #player #player-jump-sprite {
+            display: none;
+            width: auto;
+            aspect-ratio: 280 / 411;
+            position: relative;
+            z-index: 2;
+            filter: drop-shadow(0px 8px 6px rgba(0,0,0,0.4));
+            background-repeat: no-repeat;
+            background-size: 1000% 100%;
+            animation: player-jump-cycle 0.6s steps(10) infinite;
+        }
+
+        #player.facing-left #player-jump-sprite { transform: scaleX(-1); }
+        #player.facing-right #player-jump-sprite { transform: scaleX(1); }
+
+        @keyframes player-jump-cycle {
+            from { background-position-x: 0%; }
+            to { background-position-x: 111.111%; }
+        }
+
+        #player #player-punch-sprite {
+            display: none;
+            width: auto;
+            aspect-ratio: 280 / 376;
+            position: relative;
+            z-index: 2;
+            filter: drop-shadow(0px 8px 6px rgba(0,0,0,0.4));
+            background-repeat: no-repeat;
+            background-size: 500% 100%;
+            animation: player-punch-cycle 0.33s steps(5) forwards;
+        }
+
+        #player.facing-left #player-punch-sprite { transform: scaleX(-1); }
+        #player.facing-right #player-punch-sprite { transform: scaleX(1); }
+
+        @keyframes player-punch-cycle {
+            from { background-position-x: 0%; }
+            to { background-position-x: 125%; }
+        }
+
+        .zombie-container {
+            position: absolute;
+            bottom: 8.3vh;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .zombie-shadow {
+            position: absolute;
+            bottom: -1.5vh;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 18vh;
+            height: auto;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        .zombie-container .zombie-img {
+            height: 40vh;
+            aspect-ratio: 408 / 386;
+            width: auto;
+            display: block;
+            position: relative;
+            z-index: 2;
+            filter: drop-shadow(0px 8px 6px rgba(0,0,0,0.4));
+            background-repeat: no-repeat;
+            background-size: 1100% 100%;
+            animation: zombie-walk-cycle 0.88s steps(11) infinite;
+        }
+
+        .zombie-container.facing-left .zombie-img { transform: scaleX(-1); }
+        .zombie-container.facing-right .zombie-img { transform: scaleX(1); }
+
+        @keyframes zombie-walk-cycle {
+            from { background-position-x: 0%; }
+            to { background-position-x: 110%; }
+        }
+
+        .heart-item {
+            position: absolute;
+            bottom: 8.3vh; 
+            z-index: 9;
+            pointer-events: none;
+        }
+
+        .heart-shadow {
+            position: absolute;
+            bottom: -0.5vh;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 12vh;
+            height: auto;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        .heart-item .heart-img {
+            width: 14.4vh;
+            aspect-ratio: 500 / 273;
+            height: auto;
+            display: block;
+            position: relative;
+            z-index: 2;
+            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.8));
+            background-repeat: no-repeat;
+            background-size: 1600% 100%;
+            animation: heart-pop 0.5s ease-out, heart-sprite-cycle 0.8s steps(16) infinite;
+        }
+
+        @keyframes heart-pop {
+            0% { transform: translateY(0) scale(0.3); opacity: 0; }
+            50% { transform: translateY(-8vh) scale(1.4); opacity: 1; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
+        @keyframes heart-sprite-cycle {
+            from { background-position-x: 0%; }
+            to { background-position-x: 106.667%; }
+        }
+
+        .rat-container {
+            position: absolute;
+            bottom: 8.3vh;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .rat-shadow {
+            position: absolute;
+            bottom: -0.5vh;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 10vh;
+            height: auto;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        .rat-container .rat-img {
+            height: 12vh;
+            aspect-ratio: 800 / 450;
+            width: auto;
+            display: block;
+            position: relative;
+            z-index: 2;
+            filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.4));
+            pointer-events: none;
+            background-repeat: no-repeat;
+            background-size: 1700% 100%;
+            animation: rat-run-cycle 0.85s steps(17) infinite;
+        }
+
+        .rat-container.facing-left .rat-img { transform: none; }
+        .rat-container.facing-right .rat-img { transform: scaleX(-1); }
+
+        @keyframes rat-run-cycle {
+            from { background-position-x: 0%; }
+            to { background-position-x: 106.25%; }
+        }
+
+        .smoke-effect {
+            position: absolute;
+            bottom: 8.3vh;
+            z-index: 3;
+            pointer-events: none;
+            height: 40vh;
+            aspect-ratio: 280 / 376;
+            width: auto;
+            transform: translateX(-50%);
+            background-repeat: no-repeat;
+            background-size: 600% 100%;
+            animation: smoke-play-cycle 0.6s steps(6) forwards;
+        }
+
+        .smoke-effect.facing-left { transform: translateX(-50%) scaleX(-1); }
+        .smoke-effect.facing-right { transform: translateX(-50%) scaleX(1); }
+
+        @keyframes smoke-play-cycle {
+            from { background-position-x: 0%; }
+            to { background-position-x: 120%; }
+        }
+
+        .boss-container {
+            position: absolute;
+            bottom: 8.3vh;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .boss-shadow {
+            position: absolute;
+            bottom: -2vh;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30vh;
+            height: auto;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        .boss-container .boss-img {
+            height: 65vh;
+            aspect-ratio: 800 / 450;
+            width: auto;
+            display: block;
+            position: relative;
+            z-index: 2;
+            filter: drop-shadow(0px 10px 10px rgba(0,0,0,0.5));
+            background-repeat: no-repeat;
+            background-size: 7600% 100%;
+            animation: boss-idle-cycle 3.5s steps(76) infinite;
+        }
+
+        .boss-container.facing-left .boss-img { transform: scaleX(-1); }
+        .boss-container.facing-right .boss-img { transform: scaleX(1); }
+
+        @keyframes boss-idle-cycle {
+            from { background-position-x: 0%; }
+            to { background-position-x: 101.333%; }
+        }
+
+        #start-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-image: url('./nivel 0.webp');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            padding-bottom: 5vh;
+            z-index: 99999;
+            cursor: pointer;
+        }
+
+        #level0-logo {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(1.5);
+            max-width: 95vw;
+            max-height: 85vh;
+            object-fit: contain;
+            filter: drop-shadow(0px 8px 12px rgba(0,0,0,0.7));
+            opacity: 0;
+            animation: logo-fade-in 1.5s ease-out forwards;
+            pointer-events: none;
+        }
+
+        @keyframes logo-fade-in {
+            0% { opacity: 0; transform: translate(-50%, -55%) scale(1.35); }
+            100% { opacity: 1; transform: translate(-50%, -50%) scale(1.5); }
+        }
+
+        .start-message {
+            position: relative;
+            z-index: 10;
+            font-family: 'Komikax', sans-serif;
+            font-size: 8vh;
+            font-weight: normal;
+            color: #FF2222;
+            text-transform: uppercase;
+            letter-spacing: 0.3vh;
+            animation: start-blink 0.8s infinite alternate;
+            text-shadow: 0 0 2vh rgba(255, 34, 34, 0.9), 3px 3px 0 #000, -2px -2px 0 #000;
+        }
+
+        @keyframes start-blink {
+            0% { opacity: 0.2; }
+            100% { opacity: 1; }
+        }
+
+        #intro-video-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100001;
+        }
+
+        #intro-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            pointer-events: none;
+        }
+
+        #preload-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100000;
+            font-family: 'Komikax', sans-serif;
+        }
+
+        #preload-screen.visible { display: flex; }
+
+        #preload-title {
+            font-size: 6vh;
+            color: #FFD700;
+            margin-bottom: 3vh;
+            text-transform: uppercase;
+            text-shadow: 2px 2px 0 #000;
+            animation: start-blink 0.8s infinite alternate;
+        }
+
+        #preload-bar-container {
+            width: 60vw;
+            max-width: 400px;
+            height: 30px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 3px solid #ffffff;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.8);
+        }
+
+        #preload-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #FF2222;
+            border-radius: 10px;
+            transition: width 0.1s linear;
+        }
+
+        #preload-text {
+            margin-top: 2vh;
+            font-size: 2.5vh;
+            color: #fff;
+            text-shadow: 1px 1px 0 #000;
+        }
+
+        #top-hud {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        #health-section {
+            display: flex;
+            align-items: center;
+            gap: 13px; 
+        }
+
+        #enzos-img {
+            height: 94px !important; 
+            min-height: 94px !important;
+            max-height: 94px !important;
+            width: auto !important;
+            object-fit: contain;
+            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.6));
+        }
+
+        #health-details {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        #health-bar-container {
+            width: 250px !important;
+            height: 31px !important;
+            background-color: rgba(0, 0, 0, 0.6);
+            border: 3px solid #ffffff;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0px 4px 8px rgba(0,0,0,0.5);
+        }
+
+        #health-bar {
+            width: 100%;
+            height: 100%;
+            background-color: #ff2222; 
+            border-radius: 10px;
+            transition: width 0.1s linear;
+        }
+
+        #lives-container {
+            display: flex;
+            gap: 6px;
+            pointer-events: none;
+        }
+
+        .life-rect {
+            width: 35px;
+            height: 14px;
+            background-color: #ff2222;
+            border: 2px solid #ffffff;
+            border-radius: 6px;
+            box-shadow: 0px 2px 4px rgba(0,0,0,0.5);
+            transition: background-color 0.2s, opacity 0.2s;
+        }
+
+        .life-rect.empty {
+            background-color: rgba(0, 0, 0, 0.5);
+            opacity: 0.5;
+        }
+
+        #level-indicator {
+            position: fixed;
+            top: 130px;
+            left: 15px;
+            padding: 6px 12px;
+            background-color: rgba(0,0,0,0.7);
+            border-radius: 5px;
+            pointer-events: none;
+            z-index: 100;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        #score-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        #score-container img#agustines-img {
+            height: 94px !important;
+            min-height: 94px !important;
+            max-height: 94px !important;
+            width: auto !important;
+            display: block;
+            object-fit: contain;
+            filter: drop-shadow(0px 5px 8px rgba(0, 0, 0, 0.6));
+        }
+
+        #score-container .score-text {
+            font-family: 'Komikax', sans-serif;
+            font-size: 43px !important;
+            line-height: 1 !important;
+            font-weight: normal;
+            color: #ffffff;
+            text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000;
+        }
+
+        #boss-health-section {
+            display: none;
+            align-items: center;
+            gap: 13px;
+        }
+
+        #boss-health-section.visible { display: flex; }
+
+        #superagustin-img {
+            height: 94px !important;
+            min-height: 94px !important;
+            max-height: 94px !important;
+            width: auto !important;
+            display: block;
+            object-fit: contain;
+            filter: drop-shadow(0px 5px 8px rgba(0, 0, 0, 0.6));
+        }
+
+        #boss-health-bar-container {
+            width: 250px !important;
+            height: 31px !important;
+            background-color: rgba(0, 0, 0, 0.6);
+            border: 3px solid #ffffff;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0px 4px 8px rgba(0,0,0,0.5);
+        }
+
+        #boss-health-bar {
+            width: 100%;
+            height: 100%;
+            background-color: #ff2222;
+            border-radius: 10px;
+            transition: width 0.1s linear;
+        }
+
+        #level-objective-msg {
+            position: fixed;
+            top: 110px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3000;
+            pointer-events: none;
+            font-family: 'Komikax', sans-serif;
+            font-size: clamp(14px, 3vw, 24px);
+            white-space: nowrap;
+            color: #FFD700;
+            text-align: center;
+            text-transform: uppercase;
+            text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+            background: rgba(0, 0, 0, 0.75);
+            padding: 8px 16px;
+            border-radius: 12px;
+            border: 2px solid rgba(255, 215, 0, 0.4);
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            max-width: 90vw;
+        }
+
+        #level-objective-msg.visible { opacity: 1; }
+
+        #boss-sign {
+            position: fixed;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            z-index: 3500;
+            pointer-events: none;
+            font-family: 'Komikax', sans-serif;
+            font-size: clamp(32px, 8vw, 72px);
+            color: #ff1a1a;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.2vh;
+            text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 0 0 3vh rgba(255, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px 40px;
+            border-radius: 16px;
+            border: 3px solid rgba(255, 26, 26, 0.6);
+            opacity: 0;
+            transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
+            max-width: 90vw;
+            white-space: nowrap;
+        }
+
+        #boss-sign.visible {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        #go-indicator {
+            position: fixed;
+            right: 5vw; 
+            top: 50%;
+            transform: translateY(-50%);
+            display: none; 
+            align-items: center;
+            gap: 1.5vh; 
+            z-index: 2000; 
+            pointer-events: none;
+        }
+
+        #go-indicator .go-text {
+            font-family: 'Komikax', sans-serif;
+            font-size: 8vh; 
+            font-weight: normal;
+            color: #FFD700; 
+            text-transform: uppercase;
+            font-style: italic;
+            letter-spacing: 0.3vh;
+            text-shadow: 0 0 1.5vh rgba(255, 215, 0, 0.8), 0.3vh 0.3vh 0 #000, -0.1vh -0.1vh 0 #000;
+            filter: drop-shadow(0px 0.5vh 0.8vh rgba(0,0,0,0.6));
+            line-height: 1; 
+        }
+
+        #go-indicator .go-arrow {
+            width: 0;
+            height: 0;
+            border-top: 4vh solid transparent;
+            border-bottom: 4vh solid transparent;
+            border-left: 6vh solid #FF1111; 
+            filter: drop-shadow(0px 0.6vh 1vh rgba(255,0,0,0.6)) drop-shadow(0.2vh 0.2vh 0px #000);
+        }
+
+        @keyframes go-blink-infinite {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+
+        .do-go-blink-infinite {
+            display: flex !important;
+            animation: go-blink-infinite 0.8s step-end infinite; 
+        }
+
+        #gameover-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000;
+            background-image: url('./gameover.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1s ease;
+            overflow: hidden;
+        }
+
+        #gameover-screen.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #gameover-text {
+            position: relative;
+            z-index: 2;
+            font-family: 'Komikax', sans-serif;
+            font-size: 10vh;
+            color: #FF1111;
+            text-transform: uppercase;
+            pointer-events: none;
+            text-align: center;
+            animation: gameover-blink 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes gameover-blink {
+            0% { opacity: 0.2; text-shadow: 0 0 1vh rgba(255, 0, 0, 0.2), 4px 4px 0 #000, -3px -3px 0 #000; }
+            100% { opacity: 1; text-shadow: 0 0 3vh rgba(255, 0, 0, 0.9), 4px 4px 0 #000, -3px -3px 0 #000; }
+        }
+
+        .touch-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 9999;
+            pointer-events: none;
+        }
+
+        .touch-group-left, .touch-group-right {
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+        }
+
+        .touch-btn {
+            width: 75px;
+            height: 75px;
+            background-color: rgba(255, 255, 255, 0.25);
+            border: 3px solid rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            font-size: 28px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            outline: none;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.5);
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            active-filter: brightness(1.3);
+        }
+
+        .touch-btn:active, .touch-btn.pressed {
+            background-color: rgba(255, 34, 34, 0.6);
+            border-color: #FF2222;
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="start-screen">
+        <img id="level0-logo" src="./nivel 0 logo.png" alt="Logo Nivel 0">
+        <div class="start-message">START</div>
+    </div>
+
+    <div id="intro-video-container">
+        <video id="intro-video" playsinline webkit-playsinline disablepictureinpicture controlslist="nodownload nofullscreen noremoteplayback"></video>
+    </div>
+
+    <div id="preload-screen">
+        <div id="preload-title">Cargando...</div>
+        <div id="preload-bar-container">
+            <div id="preload-bar"></div>
+        </div>
+        <div id="preload-text">0%</div>
+    </div>
+
+    <div id="gameover-screen">
+        <div id="gameover-text">GAME OVER</div>
+    </div>
+
+    <div id="level-objective-msg">Mata 10 zombis y pasa de nivel</div>
+
+    <div id="boss-sign">¡JEFE FINAL!</div>
+
+    <div id="game-container">
+        <div id="background"></div>
+        <div id="barricade"><img src="./barricada.webp" alt="Barricada"></div>
+        <div id="player" class="facing-right">
+            <img id="player-shadow" src="./sombra.webp" alt="Sombra">
+            <img id="player-img" src="./reposo.gif" alt="Jugador">
+            <div id="player-jump-sprite"></div>
+            <div id="player-punch-sprite"></div>
+        </div>
+        <div id="foreground"></div>
+    </div>
+
+    <div id="top-hud">
+        <div id="health-section">
+            <img id="enzos-img" src="./enzos.png" alt="Enzos">
+            <div id="health-details">
+                <div id="health-bar-container">
+                    <div id="health-bar"></div>
+                </div>
+                <div id="lives-container">
+                    <div class="life-rect" id="life-1"></div>
+                    <div class="life-rect" id="life-2"></div>
+                    <div class="life-rect" id="life-3"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="score-container">
+            <img id="agustines-img" src="./agustines.png" alt="Agustines">
+            <div class="score-text">x <span id="kill-count">0</span></div>
+        </div>
+
+        <div id="boss-health-section">
+            <img id="superagustin-img" src="./superagustin.png" alt="Superagustin">
+            <div id="boss-health-bar-container">
+                <div id="boss-health-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="level-indicator">Nivel 1</div>
+
+    <div id="go-indicator">
+        <div class="go-text">GO</div>
+        <div class="go-arrow"></div>
+    </div>
+
+    <div class="touch-controls">
+        <div class="touch-group-left">
+            <button class="touch-btn" id="btn-left">◀</button>
+            <button class="touch-btn" id="btn-right">▶</button>
+        </div>
+        <div class="touch-group-right">
+            <button class="touch-btn" id="btn-punch">👊</button>
+            <button class="touch-btn" id="btn-jump">▲</button>
+        </div>
+    </div>
+
+    <script>
+        const container = document.getElementById('game-container');
+        const background = document.getElementById('background');
+        const foreground = document.getElementById('foreground');
+        const player = document.getElementById('player');
+        const playerImg = document.getElementById('player-img');
+        const playerShadow = document.getElementById('player-shadow');
+        const playerJumpSprite = document.getElementById('player-jump-sprite');
+        const playerPunchSprite = document.getElementById('player-punch-sprite');
+        const levelIndicator = document.getElementById('level-indicator');
+        const killCountElement = document.getElementById('kill-count');
+        const healthBar = document.getElementById('health-bar');
+        const scoreContainer = document.getElementById('score-container');
+        const bossHealthSection = document.getElementById('boss-health-section');
+        const bossHealthBar = document.getElementById('boss-health-bar');
+        const goIndicator = document.getElementById('go-indicator');
+        const startScreen = document.getElementById('start-screen');
+        const preloadScreen = document.getElementById('preload-screen');
+        const preloadBar = document.getElementById('preload-bar');
+        const preloadText = document.getElementById('preload-text');
+        const gameOverScreen = document.getElementById('gameover-screen');
+        const barricadeElement = document.getElementById('barricade');
+        const levelObjectiveMsg = document.getElementById('level-objective-msg');
+        const bossSign = document.getElementById('boss-sign');
+
+        const introVideoContainer = document.getElementById('intro-video-container');
+        const introVideo = document.getElementById('intro-video');
+
+        const IDLE_SRC = './reposo.gif';
+        const WALK_SRC = './nino_anda.gif';
+        const JUMP_SRC = './saltospritesheet.webp';
+        const SHADOW_SRC = './sombra.webp';
+        const PUNCH_SRC = './punch-spritesheet.png'; 
+        const ZOMBIE_SRC = './zombi_cojersprite Sheet.webp'; 
+        const ZOMBIE_GRAB_SRC = './zombi_cojersprite Sheet.webp'; 
+        const RAT_SRC = './rata1spritesheet.webp'; 
+        const SMOKE_SRC = './humospritesheet.png';   
+        const DEATH_SRC = './muertes.gif'; 
+        const HEART_SRC = './corazon-spritesheet.png';
+        const BOSS_IDLE_SRC = './jefefinalreposo-spritesheet.png';
+        const BOSS_IDLE_FRAMES = 76;
+        const INTRO_VIDEO_SRC = './intro.mp4';
+        
+        const DEATH_ANIMATION_DURATION = 1200; 
+
+        const LEVEL_BACKGROUNDS = {
+            1: './Gemini_Generated_Image_3vva7f3vva7f3vva.webp',
+            2: './nivel 3.webp',
+            3: './nivel 2.webp',
+            4: './nivel 4.webp'
+        };
+
+        const LEVEL_FOREGROUNDS = {
+            1: './foreground.webp',
+            2: './foreground 3.png',
+            3: './nivel 2 foreground.png'
+        };
+
+        const PARALLAX_FACTORS = { 1: 0.75, 2: 1.3, 3: 1.0, 4: 1.0 };
+
+        let currentLevel = 1;
+        let isChangingLevel = false;
+        let killedZombies = 0;
+        let levelKills = 0;
+
+        let maxHealth = 100;
+        let currentHealth = 100;
+        let bossMaxHealth = 200;
+        let bossCurrentHealth = 200;
+        let isDead = false;
+        let deathAnimationStarted = false;
+        let gameStarted = false; 
+        let isPlayingIntro = false;
+        let isGameOver = false;
+        let gameOverTimeout = null;
+        let objectiveTimeout = null;
+        let bossSignTimeout = null;
+
+        let maxLives = 3;
+        let currentLives = 3;
+
+        let barricadeActive = true;
+        const KILLS_REQUIRED = 10;
+
+        let hearts = [];
+        let currentSpriteSrc = '';
+        let bossElement = null;
+        let bossWorldX = 0;
+
+        function showObjectiveMessage() {
+            if (!levelObjectiveMsg) return;
+            if (objectiveTimeout) clearTimeout(objectiveTimeout);
+
+            levelObjectiveMsg.classList.add('visible');
+            objectiveTimeout = setTimeout(() => {
+                levelObjectiveMsg.classList.remove('visible');
+            }, 4000);
+        }
+
+        function showBossSign() {
+            if (!bossSign) return;
+            if (bossSignTimeout) clearTimeout(bossSignTimeout);
+
+            bossSign.classList.add('visible');
+            bossSignTimeout = setTimeout(() => {
+                bossSign.classList.remove('visible');
+            }, 3000);
+        }
+
+        function updateLivesUI() {
+            for (let i = 1; i <= maxLives; i++) {
+                const lifeEl = document.getElementById(`life-${i}`);
+                if (lifeEl) {
+                    if (i <= currentLives) {
+                        lifeEl.classList.remove('empty');
+                    } else {
+                        lifeEl.classList.add('empty');
+                    }
+                }
+            }
+        }
+
+        let screenWidth = window.innerWidth;
+        let screenHeight = window.innerHeight;
+
+        function getPlayerWidth() {
+            return screenHeight * 0.40 * 0.5;
+        }
+
+        function getPlayerSpeed() {
+            return screenHeight * 0.3 * 1.2 * 1.1;
+        }
+
+        function getFloorHeightPx() {
+            return screenHeight * 0.083;
+        }
+
+        let JUMP_FORCE = 0;
+        let GRAVITY = 0;
+
+        function updateJumpPhysics() {
+            const maxJumpHeight = screenHeight * 0.28; 
+            const timeToApex = 0.5 * 0.7 * 0.7 * 1.05 * 0.95;
+            GRAVITY = (2 * maxJumpHeight) / (timeToApex * timeToApex);
+            JUMP_FORCE = GRAVITY * timeToApex;
+        }
+
+        updateJumpPhysics();
+
+        window.addEventListener('resize', () => {
+            screenWidth = window.innerWidth;
+            screenHeight = window.innerHeight;
+            updateJumpPhysics();
+
+            if (gameStarted) {
+                const activeBg = new Image();
+                activeBg.onload = function() {
+                    backgroundWorldWidth = screenHeight * (this.width / this.height);
+                    background.style.width = `${backgroundWorldWidth}px`;
+                };
+                activeBg.src = encodeURI(LEVEL_BACKGROUNDS[currentLevel]);
+            }
+        });
+
+        let backgroundWorldWidth = 16384; 
+        let foregroundWorldWidth = 16384;
+        let playerWorldX = 100;
+        let targetCamerax = 0;
+        let keysPressed = {};
+        let isMoving = false;
+        let isPunching = false; 
+
+        let playerY = 0;
+        let jumpVelocity = 0;
+        let isJumping = false;
+
+        let zombies = [];
+        let rats = [];
+        let smokeEffects = [];
+
+        let zombieSpawnTimeout = null;
+        let zombieSpawnInterval = null;
+        let ratSpawnTimeout = null;
+
+        const ZOMBIE_INITIAL_DELAY = 3000; 
+        const ZOMBIE_SPAWN_RATE = 4500;    
+        
+        playerImg.style.height = '40.8vh';
+
+        let playerInactivityTime = 0;
+        const GO_TRIGGER_SECONDS = 3;
+        let isGoActive = false;
+
+        function updateGoLogic(isMovingThisFrame, isJumpingThisFrame, dt) {
+            if (!gameStarted || isGameOver) return;
+            if (isMovingThisFrame || isJumpingThisFrame) {
+                playerInactivityTime = 0; 
+                if (isGoActive) {
+                    goIndicator.classList.remove('do-go-blink-infinite');
+                    isGoActive = false;
+                }
+                return;
+            }
+
+            if (!isDead && !isPunching && !isChangingLevel) {
+                playerInactivityTime += dt;
+                if (playerInactivityTime >= GO_TRIGGER_SECONDS && !isGoActive) {
+                    isGoActive = true;
+                    goIndicator.classList.add('do-go-blink-infinite');
+                }
+            } else {
+                playerInactivityTime = 0;
+            }
+        }
+
+        function setPlayerSprite(src, height) {
+            const isJumpSprite = (src === JUMP_SRC);
+            const isPunchSprite = (src === PUNCH_SRC);
+            playerJumpSprite.style.display = isJumpSprite ? 'block' : 'none';
+            playerPunchSprite.style.display = isPunchSprite ? 'block' : 'none';
+            playerImg.style.display = (isJumpSprite || isPunchSprite) ? 'none' : 'block';
+            playerImg.style.height = height;
+            playerJumpSprite.style.height = height;
+            playerPunchSprite.style.height = height;
+
+            if (currentSpriteSrc === src) return; 
+            
+            currentSpriteSrc = src;
+            if (isJumpSprite) {
+                playerJumpSprite.style.backgroundImage = `url('${JUMP_SRC}')`;
+            } else if (isPunchSprite) {
+                playerPunchSprite.style.backgroundImage = `url('${PUNCH_SRC}')`;
+            } else {
+                playerImg.src = src;
+            }
+        }
+
+        function refreshPlayerSprite() {
+            if (!gameStarted || isGameOver) return;
+            if (isDead) {
+                setPlayerSprite(DEATH_SRC, '40.8vh');
+                return;
+            }
+            if (isPunching) {
+                setPlayerSprite(PUNCH_SRC, '42vh');
+            } else if (isJumping) {
+                setPlayerSprite(JUMP_SRC, '40vh');
+            } else if (isMoving) {
+                setPlayerSprite(WALK_SRC, '40vh');
+            } else {
+                setPlayerSprite(IDLE_SRC, '40.8vh');
+            }
+        }
+
+        const BG_MUSIC = new Audio('./musica_fondo.mp3');
+        BG_MUSIC.loop = true;
+        BG_MUSIC.volume = 1.0; 
+        BG_MUSIC.preload = 'auto';
+
+        let musicStarted = false;
+        function tryStartMusic() {
+            if (!musicStarted) {
+                BG_MUSIC.play().then(() => { musicStarted = true; }).catch(e => {});
+            }
+        }
+
+        tryStartMusic();
+
+        const enableAudioEvents = ['click', 'touchstart', 'keydown', 'pointerdown'];
+        enableAudioEvents.forEach(eventType => {
+            window.addEventListener(eventType, tryStartMusic, { once: true });
+        });
+
+        function handleGameStart(e) {
+            if (isGameOver) {
+                resetGameToLevel0();
+                return;
+            }
+            if (e && typeof e.preventDefault === 'function') {
+                e.preventDefault();
+            }
+            tryStartMusic();
+            if (!gameStarted && !isPlayingIntro) {
+                if (startScreen) { startScreen.style.display = 'none'; }
+                playIntroVideo();
+            }
+        }
+
+        function playIntroVideo() {
+            isPlayingIntro = true;
+            introVideoContainer.style.display = 'flex';
+            introVideo.src = INTRO_VIDEO_SRC;
+            introVideo.currentTime = 0;
+            introVideo.controls = false;
+            introVideo.disablePictureInPicture = true;
+
+            const playPromise = introVideo.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    skipIntroVideo();
+                });
+            }
+
+            introVideo.onended = () => {
+                skipIntroVideo();
+            };
+
+            const handleSkip = (e) => {
+                if (e && typeof e.preventDefault === 'function') e.preventDefault();
+                skipIntroVideo();
+            };
+
+            window.addEventListener('keydown', handleSkip, { once: true });
+            window.addEventListener('touchstart', handleSkip, { once: true });
+            introVideoContainer.addEventListener('click', handleSkip, { once: true });
+
+            introVideo._handleSkip = handleSkip;
+        }
+
+        function skipIntroVideo() {
+            if (!isPlayingIntro) return;
+            isPlayingIntro = false;
+
+            if (introVideo._handleSkip) {
+                window.removeEventListener('keydown', introVideo._handleSkip);
+                window.removeEventListener('touchstart', introVideo._handleSkip);
+                introVideoContainer.removeEventListener('click', introVideo._handleSkip);
+            }
+
+            introVideo.pause();
+            introVideoContainer.style.display = 'none';
+            runPreloadSequence();
+        }
+
+        function runPreloadSequence() {
+            if (preloadScreen) preloadScreen.classList.add('visible');
+
+            const assetsToLoad = [
+                LEVEL_BACKGROUNDS[1],
+                LEVEL_FOREGROUNDS[1],
+                IDLE_SRC,
+                WALK_SRC,
+                JUMP_SRC,
+                PUNCH_SRC,
+                ZOMBIE_SRC,
+                RAT_SRC,
+                SMOKE_SRC,
+                DEATH_SRC,
+                HEART_SRC,
+                INTRO_VIDEO_SRC,
+                './barricada.webp'
+            ];
+
+            let loadedCount = 0;
+            const totalAssets = assetsToLoad.length;
+
+            function updateProgress() {
+                loadedCount++;
+                let percentage = Math.floor((loadedCount / totalAssets) * 100);
+                if (preloadBar) preloadBar.style.width = percentage + '%';
+                if (preloadText) preloadText.innerText = percentage + '%';
+
+                if (loadedCount >= totalAssets) {
+                    setTimeout(() => {
+                        if (preloadScreen) preloadScreen.classList.remove('visible');
+                        gameStarted = true;
+                        loadLevel(1, 'start');
+                    }, 400); 
+                }
+            }
+
+            assetsToLoad.forEach(src => {
+                if (src.endsWith('.webm') || src.endsWith('.mp4')) {
+                    const videoTest = document.createElement('video');
+                    videoTest.onloadeddata = updateProgress;
+                    videoTest.onerror = updateProgress;
+                    videoTest.src = src;
+                } else {
+                    const img = new Image();
+                    img.onload = updateProgress;
+                    img.onerror = updateProgress; 
+                    img.src = src;
+                }
+            });
+        }
+
+        function clearHearts() {
+            hearts.forEach(h => {
+                if (h.element && h.element.parentNode) h.element.parentNode.removeChild(h.element);
+            });
+            hearts = [];
+        }
+
+        function resetGameToLevel0() {
+            if (gameOverTimeout) clearTimeout(gameOverTimeout);
+            if (objectiveTimeout) clearTimeout(objectiveTimeout);
+            if (levelObjectiveMsg) levelObjectiveMsg.classList.remove('visible');
+            if (preloadScreen) preloadScreen.classList.remove('visible');
+            if (introVideoContainer) introVideoContainer.style.display = 'none';
+
+            isGameOver = false;
+            gameStarted = false;
+            isPlayingIntro = false;
+            isDead = false;
+            deathAnimationStarted = false;
+
+            gameOverScreen.classList.remove('visible');
+            player.classList.remove('blink-effect');
+            
+            currentLives = maxLives;
+            currentHealth = maxHealth;
+            killedZombies = 0;
+            levelKills = 0;
+            currentLevel = 1;
+            playerWorldX = 100;
+            playerY = 0;
+            jumpVelocity = 0;
+            isJumping = false;
+            isMoving = false;
+            isPunching = false;
+            keysPressed = {};
+
+            barricadeActive = true;
+            barricadeElement.style.display = 'block';
+
+            updateLivesUI();
+            healthBar.style.width = '100%';
+            killCountElement.innerText = '0';
+            levelIndicator.innerText = "Nivel 1";
+            playerShadow.style.display = 'block';
+            
+            currentSpriteSrc = '';
+            setPlayerSprite(IDLE_SRC, '40.8vh');
+
+            clearZombies();
+            clearRats();
+            clearHearts();
+            removeBoss();
+
+            startScreen.style.display = 'flex';
+        }
+
+        window.addEventListener('blur', () => { keysPressed = {}; });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                keysPressed = {};
+            } else {
+                refreshPlayerSprite();
+            }
+        });
+
+        window.addEventListener('pageshow', () => { refreshPlayerSprite(); });
+
+        window.addEventListener('keydown', (e) => {
+            if (isGameOver) { resetGameToLevel0(); return; }
+            if (isPlayingIntro) return;
+            if (!gameStarted) { handleGameStart(e); return; }
+            tryStartMusic();
+
+            if (['1', '2', '3', '4'].includes(e.key) && !isChangingLevel && !isDead) {
+                const targetLevel = parseInt(e.key, 10);
+                if (LEVEL_BACKGROUNDS[targetLevel] && targetLevel !== currentLevel) {
+                    loadLevel(targetLevel, 'start');
+                }
+                return;
+            }
+
+            keysPressed[e.key.toLowerCase()] = true;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keysPressed[e.key.toLowerCase()] = false;
+        });
+
+        if (startScreen) {
+            startScreen.addEventListener('click', (e) => handleGameStart(e));
+            startScreen.addEventListener('touchstart', (e) => handleGameStart(e), { passive: false });
+        }
+
+        if (gameOverScreen) {
+            gameOverScreen.addEventListener('click', () => resetGameToLevel0());
+            gameOverScreen.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                resetGameToLevel0();
+            }, { passive: false });
+        }
+
+        window.addEventListener('mousedown', (e) => {
+            if (isGameOver) { resetGameToLevel0(); return; }
+            if (isPlayingIntro) return;
+            if (!gameStarted) { handleGameStart(e); return; }
+            if (e.button === 0) {
+                tryStartMusic();
+                performPunch();
+            }
+        });
+
+        function triggerVibration(pattern = 200) {
+            if ("vibrate" in navigator) {
+                try {
+                    navigator.vibrate(pattern);
+                } catch (e) {}
+            }
+        }
+
+        function setupTouchButton(id, keyName, actionCallback = null) {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+
+            const pressAction = (e) => {
+                if (e && typeof e.preventDefault === 'function') e.preventDefault();
+                if (isGameOver) { resetGameToLevel0(); return; }
+                if (isPlayingIntro) return;
+                if (!gameStarted) { handleGameStart(e); return; }
+                tryStartMusic();
+
+                if (keyName) keysPressed[keyName] = true;
+                btn.classList.add('pressed');
+                if (actionCallback) actionCallback();
+            };
+
+            const releaseAction = (e) => {
+                if (e && typeof e.preventDefault === 'function') e.preventDefault();
+                if (keyName) keysPressed[keyName] = false;
+                btn.classList.remove('pressed');
+            };
+
+            btn.addEventListener('touchstart', pressAction, { passive: false });
+            btn.addEventListener('touchend', releaseAction, { passive: false });
+            btn.addEventListener('touchcancel', releaseAction, { passive: false });
+            
+            btn.addEventListener('mousedown', pressAction);
+            btn.addEventListener('mouseup', releaseAction);
+            btn.addEventListener('mouseleave', releaseAction);
+        }
+
+        setupTouchButton('btn-left', 'a');
+        setupTouchButton('btn-right', 'd');
+        setupTouchButton('btn-jump', 'w');
+        setupTouchButton('btn-punch', null, () => {
+            performPunch();
+        });
+
+        const PUNCH_AUDIO = new Audio('./faaa.mp3');
+        PUNCH_AUDIO.volume = 0.2268; 
+
+        function performPunch() {
+            if (!gameStarted || isPunching || isDead || isGameOver) return;
+            isPunching = true;
+            PUNCH_AUDIO.currentTime = 0;
+            PUNCH_AUDIO.play().catch(e => {});
+            setPlayerSprite(PUNCH_SRC, '42vh');
+
+            setTimeout(() => { checkPunchHit(); }, 132);
+
+            setTimeout(() => {
+                isPunching = false;
+                if (isDead) return;
+                
+                if (isJumping) {
+                    setPlayerSprite(JUMP_SRC, '40vh');
+                } else {
+                    let isMovingNow = keysPressed['a'] || keysPressed['d'];
+                    if (isMovingNow) {
+                        setPlayerSprite(WALK_SRC, '40vh');
+                        isMoving = true;
+                    } else {
+                        setPlayerSprite(IDLE_SRC, '40.8vh');
+                        isMoving = false;
+                    }
+                }
+            }, 330);
+        }
+
+        function triggerPlayerDeath() {
+            if (isDead || isGameOver) return;
+            isDead = true;
+            deathAnimationStarted = false;
+
+            playerY = 0;
+            jumpVelocity = 0;
+            isJumping = false;
+
+            clearZombies();
+            clearRats();
+            clearHearts();
+
+            playerShadow.style.display = 'none';
+            startDeathSequence();
+        }
+
+        function startDeathSequence() {
+            if (deathAnimationStarted) return;
+            deathAnimationStarted = true;
+
+            currentSpriteSrc = '';
+            setPlayerSprite(DEATH_SRC, '40.8vh');
+
+            currentLives--;
+            updateLivesUI();
+
+            setTimeout(() => {
+                if (currentLives > 0) {
+                    respawnPlayer();
+                } else {
+                    triggerGameOver();
+                }
+            }, DEATH_ANIMATION_DURATION + 200);
+        }
+
+        function respawnPlayer() {
+            currentHealth = maxHealth;
+            healthBar.style.width = '100%';
+            isDead = false;
+            deathAnimationStarted = false;
+            playerShadow.style.display = 'block';
+            
+            playerY = 0;
+            isJumping = false;
+            jumpVelocity = 0;
+
+            setPlayerSprite(IDLE_SRC, '40.8vh');
+            isMoving = false;
+
+            player.classList.add('blink-effect');
+            setTimeout(() => {
+                player.classList.remove('blink-effect');
+            }, 1500); 
+
+            startZombieSpawning();
+            startRatSpawning();
+        }
+
+        function triggerGameOver() {
+            isGameOver = true;
+            isMoving = false;
+            if (levelObjectiveMsg) levelObjectiveMsg.classList.remove('visible');
+            gameOverScreen.classList.add('visible');
+
+            gameOverTimeout = setTimeout(() => {
+                if (isGameOver) { resetGameToLevel0(); }
+            }, 10000);
+        }
+
+        function createSmokeEffect(worldX, isPlayerFacingRight) {
+            const smokeDiv = document.createElement('div');
+            const smokeFacingRight = !isPlayerFacingRight;
+            smokeDiv.className = `smoke-effect ${smokeFacingRight ? 'facing-right' : 'facing-left'}`;
+
+            let initialScreenX = worldX - targetCamerax;
+            smokeDiv.style.left = `${initialScreenX}px`;
+            smokeDiv.style.bottom = `${getFloorHeightPx()}px`;
+
+            smokeDiv.style.backgroundImage = `url('${SMOKE_SRC}')`;
+            container.appendChild(smokeDiv);
+
+            const smokeObj = { element: smokeDiv, worldX: worldX };
+            smokeEffects.push(smokeObj);
+
+            setTimeout(() => {
+                if (smokeDiv.parentNode) smokeDiv.parentNode.removeChild(smokeDiv);
+                smokeEffects = smokeEffects.filter(s => s !== smokeObj);
+            }, 700);
+        }
+
+        function trySpawnHeart(zombieWorldX, isPlayerFacingRight) {
+            const heartDiv = document.createElement('div');
+            heartDiv.className = 'heart-item';
+            
+            const shadowImg = document.createElement('img');
+            shadowImg.className = 'heart-shadow';
+            shadowImg.src = SHADOW_SRC;
+
+            const heartImg = document.createElement('div');
+            heartImg.className = 'heart-img';
+            heartImg.style.backgroundImage = `url('${HEART_SRC}')`;
+
+            heartDiv.appendChild(shadowImg);
+            heartDiv.appendChild(heartImg);
+
+            const heartWorldX = zombieWorldX;
+            let initialScreenX = heartWorldX - targetCamerax;
+            heartDiv.style.left = `${initialScreenX}px`;
+
+            container.appendChild(heartDiv);
+
+            hearts.push({
+                element: heartDiv,
+                worldX: heartWorldX
+            });
+        }
+
+        function checkPunchHit() {
+            const hitRange = screenHeight * 0.25; 
+            const isFacingRight = player.classList.contains('facing-right');
+
+            let closestZombieIndex = -1;
+            let closestZombieDist = Infinity;
+            for (let i = 0; i < zombies.length; i++) {
+                const zombie = zombies[i];
+                const inRange = isFacingRight
+                    ? (zombie.worldX >= playerWorldX && zombie.worldX <= playerWorldX + hitRange)
+                    : (zombie.worldX <= playerWorldX && zombie.worldX >= playerWorldX - hitRange);
+
+                if (inRange) {
+                    const dist = Math.abs(zombie.worldX - playerWorldX);
+                    if (dist < closestZombieDist) {
+                        closestZombieDist = dist;
+                        closestZombieIndex = i;
+                    }
+                }
+            }
+
+            if (closestZombieIndex !== -1) {
+                const zombie = zombies[closestZombieIndex];
+                const zombieCenterX = zombie.worldX + (getPlayerWidth() / 2);
+                createSmokeEffect(zombieCenterX, isFacingRight);
+
+                const pushDistance = screenHeight * 0.15 * 1.20; 
+                if (isFacingRight) {
+                    zombie.worldX += pushDistance;
+                } else {
+                    zombie.worldX -= pushDistance;
+                }
+                zombie.worldX = Math.max(0, Math.min(zombie.worldX, backgroundWorldWidth - getPlayerWidth()));
+
+                if (Math.random() < 0.2) {
+                    trySpawnHeart(zombie.worldX, isFacingRight);
+                }
+
+                if (zombie.element && zombie.element.parentNode) {
+                    zombie.element.parentNode.removeChild(zombie.element);
+                }
+                zombies.splice(closestZombieIndex, 1);
+
+                killedZombies++;
+                levelKills++;
+                killCountElement.innerText = killedZombies;
+            }
+        }
+
+        function spawnZombie() {
+            if (!gameStarted || isChangingLevel || isDead || isGameOver) return;
+
+            const pWidth = getPlayerWidth();
+            const spawnFromLeft = Math.random() < 0.5;
+            let spawnX = spawnFromLeft 
+                ? Math.max(0, targetCamerax - 120)
+                : Math.min(backgroundWorldWidth - pWidth, targetCamerax + screenWidth + 20);
+
+            const zombieAudio = new Audio('./zombi_audio.mp3');
+            zombieAudio.volume = 0.6;
+            zombieAudio.play().catch(() => {
+                zombieAudio.src = './zombi_audio.wav';
+                zombieAudio.play().catch(() => {});
+            });
+
+            const zombieDiv = document.createElement('div');
+            zombieDiv.className = 'zombie-container facing-right';
+
+            const shadowImg = document.createElement('img');
+            shadowImg.className = 'zombie-shadow';
+            shadowImg.src = SHADOW_SRC;
+
+            const zombieImg = document.createElement('div');
+            zombieImg.className = 'zombie-img';
+            
+            zombieImg.style.backgroundImage = `url('${ZOMBIE_SRC}')`;
+
+            zombieDiv.appendChild(shadowImg);
+            zombieDiv.appendChild(zombieImg);
+            container.appendChild(zombieDiv);
+
+            zombies.push({
+                element: zombieDiv,
+                imageElement: zombieImg,
+                worldX: spawnX,
+                speedRatio: 0.12 + Math.random() * 0.06,
+                isGrabbing: false,
+                lastAttackTime: 0
+            });
+        }
+
+        function updateBossHealthUI() {
+            if (bossHealthBar) bossHealthBar.style.width = `${(bossCurrentHealth / bossMaxHealth) * 100}%`;
+        }
+
+        function spawnBoss() {
+            if (bossElement) return;
+            const pWidth = getPlayerWidth();
+            bossWorldX = backgroundWorldWidth * 0.70;
+
+            const bossDiv = document.createElement('div');
+            bossDiv.className = 'boss-container facing-right';
+
+            const shadowImg = document.createElement('img');
+            shadowImg.className = 'boss-shadow';
+            shadowImg.src = SHADOW_SRC;
+
+            const bossImg = document.createElement('div');
+            bossImg.className = 'boss-img';
+            bossImg.style.backgroundImage = `url('${BOSS_IDLE_SRC}')`;
+
+            bossDiv.appendChild(shadowImg);
+            bossDiv.appendChild(bossImg);
+            container.appendChild(bossDiv);
+
+            bossElement = bossDiv;
+
+            bossCurrentHealth = bossMaxHealth;
+            updateBossHealthUI();
+            if (scoreContainer) scoreContainer.style.display = 'none';
+            if (bossHealthSection) bossHealthSection.classList.add('visible');
+        }
+
+        function removeBoss() {
+            if (bossElement && bossElement.parentNode) bossElement.parentNode.removeChild(bossElement);
+            bossElement = null;
+
+            if (bossHealthSection) bossHealthSection.classList.remove('visible');
+            if (scoreContainer) scoreContainer.style.display = 'flex';
+        }
+
+        function clearZombies() {
+            if (zombieSpawnTimeout) { clearTimeout(zombieSpawnTimeout); zombieSpawnTimeout = null; }
+            if (zombieSpawnInterval) { clearInterval(zombieSpawnInterval); zombieSpawnInterval = null; }
+
+            zombies.forEach(zombie => {
+                if (zombie.element && zombie.element.parentNode) zombie.element.parentNode.removeChild(zombie.element);
+            });
+            zombies = [];
+
+            smokeEffects.forEach(smoke => {
+                if (smoke.element && smoke.element.parentNode) smoke.element.parentNode.removeChild(smoke.element);
+            });
+            smokeEffects = [];
+        }
+
+        function startZombieSpawning() {
+            if (!gameStarted || isGameOver) return;
+            clearZombies();
+            zombieSpawnTimeout = setTimeout(() => {
+                spawnZombie(); 
+                zombieSpawnInterval = setInterval(spawnZombie, ZOMBIE_SPAWN_RATE);
+            }, ZOMBIE_INITIAL_DELAY);
+        }
+
+        function spawnRat() {
+            if (!gameStarted || isChangingLevel || isDead || isGameOver) return;
+
+            let spawnX = targetCamerax + screenWidth + 50;
+
+            const ratDiv = document.createElement('div');
+            ratDiv.className = 'rat-container facing-left';
+
+            const shadowImg = document.createElement('img');
+            shadowImg.className = 'rat-shadow';
+            shadowImg.src = SHADOW_SRC;
+
+            const ratImg = document.createElement('div');
+            ratImg.className = 'rat-img';
+            ratImg.style.backgroundImage = `url('${RAT_SRC}')`;
+
+            ratDiv.appendChild(shadowImg);
+            ratDiv.appendChild(ratImg);
+            container.appendChild(ratDiv);
+
+            rats.push({
+                element: ratDiv,
+                worldX: spawnX,
+                speedRatio: 0.21,
+                lastAttackTime: 0
+            });
+
+            if (!isGameOver && !isDead) {
+                const nextRatDelay = 7000 + Math.random() * 5000; 
+                ratSpawnTimeout = setTimeout(spawnRat, nextRatDelay);
+            }
+        }
+
+        function clearRats() {
+            if (ratSpawnTimeout) { clearTimeout(ratSpawnTimeout); ratSpawnTimeout = null; }
+            rats.forEach(rat => {
+                if (rat.element && rat.element.parentNode) rat.element.parentNode.removeChild(rat.element);
+            });
+            rats = [];
+        }
+
+        function startRatSpawning() {
+            if (!gameStarted || isGameOver) return;
+            clearRats();
+            const initialRatDelay = 5000 + Math.random() * 4000;
+            ratSpawnTimeout = setTimeout(spawnRat, initialRatDelay);
+        }
+
+        function loadLevel(levelNum, spawnAt = 'start') {
+            if (!LEVEL_BACKGROUNDS[levelNum] || isGameOver) return;
+
+            isChangingLevel = true;
+            currentLevel = levelNum;
+            levelIndicator.innerText = `Nivel ${currentLevel}`;
+            clearZombies();
+            clearRats();
+            clearHearts();
+
+            if (levelNum === 1 || levelNum === 2) {
+                barricadeActive = true;
+                levelKills = 0; 
+                barricadeElement.style.display = 'block';
+                showObjectiveMessage();
+            } else {
+                barricadeActive = false;
+                barricadeElement.style.display = 'none';
+                if (levelObjectiveMsg) levelObjectiveMsg.classList.remove('visible');
+            }
+
+            if (bossSign) bossSign.classList.remove('visible');
+            if (levelNum === 4) {
+                showBossSign();
+            }
+
+            const bgPath = encodeURI(LEVEL_BACKGROUNDS[levelNum]);
+            const fgPath = LEVEL_FOREGROUNDS[levelNum] ? encodeURI(LEVEL_FOREGROUNDS[levelNum]) : null;
+
+            let bgLoaded = false;
+            let fgLoaded = !fgPath;
+
+            const checkAndFinish = () => {
+                if (bgLoaded && fgLoaded) {
+                    background.style.backgroundImage = `url('${bgPath}')`;
+                    background.style.width = `${backgroundWorldWidth}px`;
+
+                    if (fgPath) {
+                        foreground.style.display = 'block';
+                        foreground.style.backgroundImage = `url('${fgPath}')`;
+                        foreground.style.width = `${foregroundWorldWidth}px`;
+                    } else {
+                        foreground.style.display = 'none';
+                    }
+
+                    removeBoss();
+                    if (levelNum === 4) {
+                        spawnBoss();
+                    }
+
+                    const pWidth = getPlayerWidth();
+                    playerWorldX = (spawnAt === 'start') ? 100 : backgroundWorldWidth - pWidth - 100;
+
+                    let isMovingNow = keysPressed['a'] || keysPressed['d'];
+                    if (!isDead) {
+                        if (isMovingNow) {
+                            setPlayerSprite(WALK_SRC, '40vh');
+                            isMoving = true;
+                        } else {
+                            setPlayerSprite(IDLE_SRC, '40.8vh');
+                            isMoving = false;
+                        }
+                    }
+
+                    isChangingLevel = false;
+                    startZombieSpawning();
+                    startRatSpawning();
+                }
+            };
+
+            const bgImg = new Image();
+            bgImg.onload = function() {
+                backgroundWorldWidth = screenHeight * (this.width / this.height);
+                bgLoaded = true;
+                checkAndFinish();
+            };
+            bgImg.onerror = function() { bgLoaded = true; checkAndFinish(); };
+            bgImg.src = bgPath;
+
+            if (fgPath) {
+                const fgImg = new Image();
+                fgImg.onload = function() {
+                    foregroundWorldWidth = screenHeight * (this.width / this.height);
+                    fgLoaded = true;
+                    checkAndFinish();
+                };
+                fgImg.onerror = function() { fgLoaded = true; checkAndFinish(); };
+                fgImg.src = fgPath;
+            }
+        }
+
+        let lastFrameTime = null;
+
+        function gameLoop(timestamp) {
+            if (lastFrameTime === null) lastFrameTime = timestamp;
+            let dt = (timestamp - lastFrameTime) / 1000;
+            lastFrameTime = timestamp;
+            dt = Math.min(dt, 0.05);
+
+            let horizontallyMovingThisFrame = false;
+            const currentSpeed = getPlayerSpeed() * (isJumping ? 1.2155 : 1);
+            const pWidth = getPlayerWidth();
+
+            if (gameStarted && !isChangingLevel && !isDead && !isGameOver) {
+                if ((currentLevel === 1 || currentLevel === 2) && barricadeActive) {
+                    barricadeElement.style.display = 'block';
+                    let barricadeWorldX = backgroundWorldWidth - pWidth - 300;
+                    let barricadeScreenX = barricadeWorldX - targetCamerax;
+                    barricadeElement.style.left = `${barricadeScreenX}px`;
+
+                    if (playerWorldX + pWidth > barricadeWorldX) {
+                        playerWorldX = barricadeWorldX - pWidth;
+                    }
+
+                    if (levelKills >= KILLS_REQUIRED) {
+                        barricadeActive = false;
+                        barricadeElement.style.display = 'none';
+                    }
+                } else {
+                    barricadeElement.style.display = 'none';
+                }
+
+                if (!isPunching) {
+                    if (keysPressed['a']) {
+                        playerWorldX -= currentSpeed * dt;
+                        player.classList.remove('facing-right');
+                        player.classList.add('facing-left');
+                        horizontallyMovingThisFrame = true;
+                    }
+                    if (keysPressed['d']) {
+                        playerWorldX += currentSpeed * dt;
+                        player.classList.remove('facing-left');
+                        player.classList.add('facing-right');
+                        horizontallyMovingThisFrame = true;
+                    }
+
+                    if ((keysPressed['w'] || keysPressed[' '] || keysPressed['arrowup']) && !isJumping) {
+                        isJumping = true;
+                        jumpVelocity = JUMP_FORCE;
+                        setPlayerSprite(JUMP_SRC, '40vh');
+                    }
+                }
+
+                const maxX = backgroundWorldWidth - pWidth;
+                if (playerWorldX >= maxX) {
+                    playerWorldX = maxX;
+                    if (currentLevel === 1) loadLevel(2, 'start'); 
+                    else if (currentLevel === 2) loadLevel(3, 'start'); 
+                    else if (currentLevel === 3) loadLevel(4, 'start'); 
+                }
+
+                if (playerWorldX <= 0) {
+                    if (currentLevel === 2) loadLevel(1, 'end'); 
+                    else if (currentLevel === 3) loadLevel(2, 'end'); 
+                    else if (currentLevel === 4) loadLevel(3, 'end'); 
+                    else playerWorldX = 0; 
+                }
+            }
+
+            updateGoLogic(horizontallyMovingThisFrame, isJumping, dt);
+
+            if (gameStarted && (isJumping || (isDead && playerY > 0))) {
+                playerY += jumpVelocity * dt;
+                jumpVelocity -= GRAVITY * dt;
+
+                if (playerY <= 0) {
+                    playerY = 0;
+                    jumpVelocity = 0;
+                    isJumping = false;
+
+                    if (isDead) {
+                        startDeathSequence();
+                    } else if (!isPunching && !isGameOver) {
+                        let isMovingNow = keysPressed['a'] || keysPressed['d'];
+                        if (isMovingNow) {
+                            setPlayerSprite(WALK_SRC, '40vh');
+                            isMoving = true;
+                        } else {
+                            setPlayerSprite(IDLE_SRC, '40.8vh');
+                            isMoving = false;
+                        }
+                    }
+                }
+            }
+
+            if (!isPunching && !isDead && !isJumping && !isGameOver) {
+                if (horizontallyMovingThisFrame && !isMoving) {
+                    setPlayerSprite(WALK_SRC, '40vh');
+                    isMoving = true;
+                } else if (!horizontallyMovingThisFrame && isMoving) {
+                    setPlayerSprite(IDLE_SRC, '40.8vh');
+                    isMoving = false;
+                }
+            } else if (!isJumping) {
+                isMoving = horizontallyMovingThisFrame;
+            }
+
+            targetCamerax = playerWorldX - (screenWidth / 2) + (pWidth / 2);
+            targetCamerax = Math.max(0, Math.min(targetCamerax, backgroundWorldWidth - screenWidth));
+
+            background.style.transform = `translateX(-${targetCamerax}px)`;
+            
+            if (LEVEL_FOREGROUNDS[currentLevel]) {
+                let parallaxFactor = PARALLAX_FACTORS[currentLevel] ?? 1.0;
+                foreground.style.transform = `translateX(-${targetCamerax * parallaxFactor}px)`;
+            }
+
+            let currentFloorHeight = getFloorHeightPx();
+            let playerScreenX = playerWorldX - targetCamerax;
+            player.style.left = `${playerScreenX}px`;
+            player.style.bottom = `${currentFloorHeight + playerY}px`;
+
+            if (isJumping || isDead || isGameOver) {
+                playerShadow.style.display = 'none';
+            } else {
+                playerShadow.style.display = 'block';
+                let shadowRatio = Math.min(1, playerY / (screenHeight * 0.25));
+                playerShadow.style.transform = `translateX(-50%) scale(${1 - (shadowRatio * 0.45)})`;
+                playerShadow.style.opacity = 0.8 - (shadowRatio * 0.55);
+            }
+
+            if (gameStarted && !isChangingLevel && !isDead && !isGameOver) {
+                const stopDistance = screenHeight * 0.16; 
+                const damageDistance = screenHeight * 0.18; 
+                const ratDamageDistance = screenHeight * 0.114; 
+                const now = Date.now();
+
+                zombies.forEach(zombie => {
+                    let distance = Math.abs(zombie.worldX - playerWorldX);
+                    let zombieSpeed = screenHeight * zombie.speedRatio * dt;
+
+                    if (distance > stopDistance) {
+                        if (zombie.worldX < playerWorldX) {
+                            zombie.worldX += zombieSpeed;
+                            zombie.element.className = 'zombie-container facing-right';
+                        } else {
+                            zombie.worldX -= zombieSpeed;
+                            zombie.element.className = 'zombie-container facing-left';
+                        }
+
+                        if (zombie.isGrabbing) {
+                            zombie.isGrabbing = false;
+                            zombie.imageElement.style.backgroundImage = `url('${ZOMBIE_SRC}')`;
+                        }
+                    } else {
+                        zombie.element.className = zombie.worldX < playerWorldX ? 'zombie-container facing-right' : 'zombie-container facing-left';
+
+                        if (!zombie.isGrabbing) {
+                            zombie.isGrabbing = true;
+                            zombie.imageElement.style.backgroundImage = `url('${ZOMBIE_GRAB_SRC}')`;
+                        }
+
+                        if (distance <= damageDistance && (now - zombie.lastAttackTime >= 1000)) {
+                            zombie.lastAttackTime = now;
+                            currentHealth = Math.max(0, currentHealth - 8);
+                            healthBar.style.width = `${(currentHealth / maxHealth) * 100}%`;
+                            
+                            triggerVibration(250);
+
+                            if (currentHealth <= 0) triggerPlayerDeath();
+                        }
+                    }
+
+                    zombie.element.style.left = `${zombie.worldX - targetCamerax}px`;
+                    zombie.element.style.bottom = `${currentFloorHeight}px`;
+                });
+
+                if (bossElement) {
+                    bossElement.style.left = `${bossWorldX - targetCamerax}px`;
+                    bossElement.style.bottom = `${currentFloorHeight}px`;
+                }
+
+                for (let i = hearts.length - 1; i >= 0; i--) {
+                    let heart = hearts[i];
+                    heart.element.style.left = `${heart.worldX - targetCamerax}px`;
+                    heart.element.style.bottom = `${currentFloorHeight}px`;
+
+                    let heartDistance = Math.abs(heart.worldX - playerWorldX);
+                    if (heartDistance < (pWidth * 0.8) && playerY < screenHeight * 0.1) {
+                        currentHealth = Math.min(maxHealth, currentHealth + 25);
+                        healthBar.style.width = `${(currentHealth / maxHealth) * 100}%`;
+
+                        if (heart.element && heart.element.parentNode) {
+                            heart.element.parentNode.removeChild(heart.element);
+                        }
+                        hearts.splice(i, 1);
+                    }
+                }
+
+                for (let i = rats.length - 1; i >= 0; i--) {
+                    let rat = rats[i];
+                    let ratSpeed = screenHeight * rat.speedRatio * dt;
+                    rat.worldX -= ratSpeed;
+
+                    let distance = Math.abs(rat.worldX - playerWorldX);
+                    if (distance <= ratDamageDistance && playerY < screenHeight * 0.1) {
+                        if (now - rat.lastAttackTime >= 800) {
+                            rat.lastAttackTime = now;
+                            currentHealth = Math.max(0, currentHealth - 10);
+                            healthBar.style.width = `${(currentHealth / maxHealth) * 100}%`;
+                            
+                            triggerVibration(150);
+
+                            if (currentHealth <= 0) triggerPlayerDeath();
+                        }
+                    }
+
+                    rat.element.style.left = `${rat.worldX - targetCamerax}px`;
+                    rat.endElement = `${currentFloorHeight}px`;
+                    rat.element.style.bottom = `${currentFloorHeight}px`;
+
+                    if (rat.worldX < targetCamerax - 100) {
+                        if (rat.element && rat.element.parentNode) rat.element.parentNode.removeChild(rat.element);
+                        rats.splice(i, 1);
+                    }
+                }
+
+                smokeEffects.forEach(smoke => {
+                    smoke.element.style.left = `${smoke.worldX - targetCamerax}px`;
+                    smoke.element.style.bottom = `${currentFloorHeight}px`;
+                });
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        updateLivesUI();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
